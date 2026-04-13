@@ -44,15 +44,26 @@
 --   * Database     : `var('src_database')` — overrides `target.database` so a
 --                    single profile can target multiple databases at run time.
 
-select
-    * exclude (phone_no_shared),
-    case
-        when phone_no_shared = '0' then 'false'
-        when phone_no_shared = '1' then 'true'
-    end::varchar as phone_no_shared
-from {{ var('src_database') }}.{{ var('src_schema') }}.{{ var('src_table') }}
-
 {% if is_incremental() %}
-    -- Only process rows loaded/updated since the last successful run.
+    -- Incremental step — runs ONLY after the table has been seeded.
+    -- Rows arriving post-migration come from the edge pipeline without the
+    -- pre-load Python transformation, so `phone_no_shared` is still the raw
+    -- '0'/'1' value. Apply the same mapping the Python script used
+    -- (`'0'` -> `'False'`, `'1'` -> `'True'`) so merged rows are
+    -- indistinguishable from the pre-migration rows already in the table.
+    select
+        * exclude (phone_no_shared),
+        case
+            when phone_no_shared = '0' then 'False'
+            when phone_no_shared = '1' then 'True'
+        end::varchar as phone_no_shared
+    from {{ var('src_database') }}.{{ var('src_schema') }}.{{ var('src_table') }}
     where "__HEVO__LOADED_AT" > (select coalesce(max("__HEVO__LOADED_AT"), 0) from {{ this }})
+{% else %}
+    -- First run (seed) — the source already contains the Python-transformed
+    -- values ('True'/'False') from the standard pipeline, so a plain SELECT *
+    -- preserves them as-is. No CASE here; applying it would blow away the
+    -- already-transformed values with NULL.
+    select *
+    from {{ var('src_database') }}.{{ var('src_schema') }}.{{ var('src_table') }}
 {% endif %}
