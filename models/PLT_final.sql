@@ -3,6 +3,7 @@
     unique_key='id',
     incremental_strategy='merge',
     on_schema_change='append_new_columns',
+    database=var('src_database'),
     schema=var('src_schema')
 ) }}
 
