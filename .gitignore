@@ -1,0 +1,18 @@
+target/
+dbt_packages/
+logs/
+.user.yml
+.env
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Python (for any helper scripts)
+__pycache__/
+*.pyc
+.venv/
+venv/
