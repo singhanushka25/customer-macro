@@ -53,5 +53,5 @@ from {{ var('src_database') }}.{{ var('src_schema') }}.{{ var('src_table') }}
 
 {% if is_incremental() %}
     -- Only process rows loaded/updated since the last successful run.
-    where "__HEVO__LOADED_AT" > (select coalesce(max("__HEVO__LOADED_AT"), '1900-01-01'::timestamp) from {{ this }})
+    where "__HEVO__LOADED_AT" > (select coalesce(max("__HEVO__LOADED_AT"), 0) from {{ this }})
 {% endif %}
