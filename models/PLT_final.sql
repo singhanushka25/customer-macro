@@ -9,12 +9,13 @@
 -- Post-load equivalent of a pre-load Python `transform(event)`.
 --
 -- Runtime inputs (required; pass via `--vars`):
---   src_schema : schema holding the source table (also where PLT_final lands)
---   src_table  : name of the source table to transform
+--   src_database : database holding the source table (PLT_final lands here too)
+--   src_schema   : schema holding the source table (also where PLT_final lands)
+--   src_table    : name of the source table to transform
 --
 -- Usage:
 --   dbt run --profiles-dir . --select PLT_final \
---     --vars "{src_schema: clone_events_schema, src_table: events}"
+--     --vars '{"src_database": "MY_DB", "src_schema": "MY_SCHEMA", "src_table": "events"}'
 --
 -- Original pre-load logic (per-row, Python):
 --   if eventName == '<schema>.<table>':
@@ -30,7 +31,7 @@
 -- Incremental strategy:
 --   * `unique_key='id'` — source guarantees `id` is the PK. dbt builds a MERGE
 --     on id, so updates to an existing row replace the target row in place.
---   * Watermark: `_hevo_loaded_at` — ingestion timestamp bumped on insert/update.
+--   * Watermark: `__HEVO__LOADED_AT` — ingestion timestamp bumped on insert/update.
 --   * Idempotent: SELECT is a pure function of the source row, so overlapping
 --     windows or re-runs produce identical target state.
 --
@@ -39,7 +40,8 @@
 --   * Schema       : `var('src_schema')` via `config(schema=...)`, using the
 --                    override in `macros/generate_schema_name.sql` so the schema
 --                    is used verbatim (not suffixed to `target.schema`).
---   * Database     : `target.database` from the active dbt profile.
+--   * Database     : `var('src_database')` — overrides `target.database` so a
+--                    single profile can target multiple databases at run time.
 
 select
     * exclude (phone_no_shared),
@@ -47,9 +49,9 @@ select
         when phone_no_shared = '0' then 'false'
         when phone_no_shared = '1' then 'true'
     end::varchar as phone_no_shared
-from {{ target.database }}.{{ var('src_schema') }}.{{ var('src_table') }}
+from {{ var('src_database') }}.{{ var('src_schema') }}.{{ var('src_table') }}
 
 {% if is_incremental() %}
     -- Only process rows loaded/updated since the last successful run.
-    where _hevo_loaded_at > (select coalesce(max(_hevo_loaded_at), '1900-01-01'::timestamp) from {{ this }})
+    where "__HEVO__LOADED_AT" > (select coalesce(max("__HEVO__LOADED_AT"), '1900-01-01'::timestamp) from {{ this }})
 {% endif %}
