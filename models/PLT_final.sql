@@ -44,9 +44,9 @@
 select
     * exclude (phone_no_shared),
     case
-        when phone_no_shared = 0 then false
-        when phone_no_shared = 1 then true
-    end as phone_no_shared
+        when phone_no_shared = 0 then 'false'
+        when phone_no_shared = 1 then 'true'
+    end::varchar as phone_no_shared
 from {{ target.database }}.{{ var('src_schema') }}.{{ var('src_table') }}
 
 {% if is_incremental() %}
