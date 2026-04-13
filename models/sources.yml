@@ -7,7 +7,19 @@ sources:
     tables:
       - name: events
         description: "Event rows loaded from the source."
+        loaded_at_field: _hevo_loaded_at
         columns:
+          - name: id
+            description: "Primary key. Used as `unique_key` in the incremental model."
+            tests:
+              - unique
+              - not_null
+          - name: _hevo_loaded_at
+            description: >
+              Ingestion timestamp — bumped on insert/update. Used as the
+              incremental watermark in the `events` model.
+            tests:
+              - not_null
           - name: phone_no_shared
             description: >
               Stored as INT (0/1/NULL) at load time.
